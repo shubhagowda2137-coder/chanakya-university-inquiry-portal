@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Transport – Chanakya University{% endblock %}
+{% block nav_transport %}active{% endblock %}
+
+{% block content %}
+<div class="py-4" style="background:linear-gradient(135deg,#bf360c,#e65100);color:white">
+  <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><a href="/" class="text-white-50">Home</a></li>
+        <li class="breadcrumb-item active text-white">Transport</li>
+      </ol>
+    </nav>
+    <h1 class="brand-font"><i class="bi bi-bus-front me-2" style="color:#ffd600"></i>Transport Facilities</h1>
+    <p class="opacity-75 mb-0">Reliable and safe transportation connecting campus to the city</p>
+  </div>
+</div>
+
+<div class="container py-5">
+  <!-- Stats -->
+  <div class="row g-3 mb-5">
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#e65100">
+        <div class="stat-number" style="color:#e65100" id="totalRoutes">–</div>
+        <div class="stat-label">Routes</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#1565c0">
+        <div class="stat-number" style="color:#1565c0" id="totalBuses">–</div>
+        <div class="stat-label">Buses</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#2e7d32">
+        <div class="stat-number text-success" id="availSeats">–</div>
+        <div class="stat-label">Available Seats</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#6a1b9a">
+        <div class="stat-number" style="color:#6a1b9a" id="totalSeats">–</div>
+        <div class="stat-label">Total Capacity</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="mb-4">
+    <input type="text" class="form-control search-bar" id="routeSearch" placeholder="Search routes by name, starting or ending point…" style="max-width:500px">
+  </div>
+
+  <div id="loadingSpinner" class="text-center py-5">
+    <div class="spinner-border" style="color:#e65100" role="status"></div>
+    <p class="mt-2 text-muted">Loading routes…</p>
+  </div>
+
+  <div class="row g-4" id="routeGrid"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allRoutes = [];
+
+async function loadRoutes(search='') {
+  document.getElementById('loadingSpinner').style.display='block';
+  document.getElementById('routeGrid').innerHTML='';
+  const params = new URLSearchParams({page_size: 50});
+  if (search) params.set('search', search);
+  try {
+    const res  = await fetch(`/api/transport/routes/?${params}`);
+    const data = await res.json();
+    allRoutes  = data.results || data;
+    document.getElementById('loadingSpinner').style.display='none';
+
+    let totalBuses=0, availSeats=0, totalSeats=0;
+    allRoutes.forEach(r => {
+      totalBuses += r.bus_count || 0;
+      availSeats += r.total_available_seats || 0;
+    });
+
+    document.getElementById('totalRoutes').textContent = allRoutes.length;
+    document.getElementById('totalBuses').textContent  = totalBuses;
+    document.getElementById('availSeats').textContent  = availSeats;
+
+    if (!allRoutes.length) {
+      document.getElementById('routeGrid').innerHTML='<div class="col-12 text-center py-5 text-muted">No routes found.</div>';
+      return;
+    }
+    document.getElementById('routeGrid').innerHTML = allRoutes.map((r,i) => `
+      <div class="col-md-6 col-lg-6">
+        <div class="card card-cu h-100">
+          <div class="card-header-cu" style="background:linear-gradient(135deg,#bf360c,#e65100)">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="small opacity-75 mb-1">Route ${String(i+1).padStart(2,'0')}</div>
+                <h5 class="mb-0 fw-bold">${r.route_name}</h5>
+              </div>
+              <div class="text-end">
+                <div class="badge rounded-pill bg-white" style="color:#e65100">${r.bus_count} Bus${r.bus_count!==1?'es':''}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3 p-3 rounded-3" style="background:#fff3e0">
+              <div class="text-center flex-grow-1">
+                <div class="small text-muted mb-1">From</div>
+                <div class="fw-semibold small">${r.starting_point}</div>
+              </div>
+              <div class="px-3 text-center">
+                <i class="bi bi-arrow-right-circle fs-4" style="color:#e65100"></i>
+                ${r.distance_km ? `<div class="small text-muted">${r.distance_km} km</div>` : ''}
+              </div>
+              <div class="text-center flex-grow-1">
+                <div class="small text-muted mb-1">To</div>
+                <div class="fw-semibold small">${r.ending_point}</div>
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="p-2 rounded-2 text-center" style="background:#e8f5e9">
+                  <div class="fw-bold ${r.total_available_seats>10?'text-success':r.total_available_seats>0?'avail-low':'avail-none'}">${r.total_available_seats}</div>
+                  <div class="small text-muted">Available Seats</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 rounded-2 text-center" style="background:#e3f2fd">
+                  <div class="fw-bold text-primary">${r.bus_count}</div>
+                  <div class="small text-muted">Buses on Route</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer bg-transparent border-0 p-3">
+            <button class="btn btn-sm btn-outline-warning rounded-pill w-100" onclick="viewBuses(${r.id}, '${r.route_name}')">
+              <i class="bi bi-bus-front me-1"></i>View Bus Schedule
+            </button>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('loadingSpinner').style.display='none';
+    document.getElementById('routeGrid').innerHTML='<div class="col-12 text-danger text-center">Error loading routes.</div>';
+  }
+}
+
+async function viewBuses(routeId, routeName) {
+  const res  = await fetch(`/api/transport/routes/${routeId}/buses/`);
+  const data = await res.json();
+  const buses = data.results || [];
+  document.getElementById('busModalTitle').textContent = routeName;
+  document.getElementById('busTableBody').innerHTML = buses.map(b => {
+    const fillPct = b.total_seats ? Math.round(((b.total_seats - b.available_seats) / b.total_seats) * 100) : 0;
+    return `<tr>
+      <td class="fw-semibold">${b.bus_number}</td>
+      <td>${b.total_seats}</td>
+      <td class="${b.available_seats>10?'avail-good':b.available_seats>0?'avail-low':'avail-none'}">${b.available_seats}</td>
+      <td>
+        <div class="progress" style="height:6px;width:80px">
+          <div class="progress-bar bg-warning" style="width:${fillPct}%"></div>
+        </div>
+        <small class="text-muted">${fillPct}% full</small>
+      </td>
+      <td>${b.driver_name || '–'}</td>
+      <td>${b.driver_phone || '–'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="text-muted text-center">No buses on this route.</td></tr>';
+  new bootstrap.Modal(document.getElementById('busDetailModal')).show();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadRoutes();
+  let debounce;
+  document.getElementById('routeSearch').addEventListener('input', e => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => loadRoutes(e.target.value), 400);
+  });
+});
+</script>
+
+<!-- Bus Detail Modal -->
+<div class="modal fade" id="busDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header" style="background:linear-gradient(135deg,#bf360c,#e65100);color:white">
+        <h5 class="modal-title brand-font" id="busModalTitle">Bus Schedule</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-cu">
+              <tr>
+                <th>Bus Number</th>
+                <th>Total Seats</th>
+                <th>Available Seats</th>
+                <th>Occupancy</th>
+                <th>Driver</th>
+                <th>Driver Phone</th>
+              </tr>
+            </thead>
+            <tbody id="busTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <small class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Seat availability updates regularly.</small>
+        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Close</button>
+        <button class="btn rounded-pill px-4" style="background:var(--cu-primary);color:white"
+                data-bs-toggle="modal" data-bs-target="#inquiryModal">
+          <i class="bi bi-pencil-square me-1"></i>Enquire Now
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Faculty – Chanakya University{% endblock %}
+{% block nav_faculty %}active{% endblock %}
+
+{% block content %}
+<div class="py-4" style="background:linear-gradient(135deg,#880e4f,#c2185b);color:white">
+  <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><a href="/" class="text-white-50">Home</a></li>
+        <li class="breadcrumb-item active text-white">Faculty</li>
+      </ol>
+    </nav>
+    <h1 class="brand-font"><i class="bi bi-person-badge me-2" style="color:#ffd600"></i>Our Faculty</h1>
+    <p class="opacity-75 mb-0">Meet our experienced and distinguished academic community</p>
+  </div>
+</div>
+
+<div class="container py-5">
+  <!-- Filter Bar -->
+  <div class="card card-cu mb-4">
+    <div class="card-body p-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4">
+          <input type="text" class="form-control search-bar" id="searchInput" placeholder="Search faculty by name…">
+        </div>
+        <div class="col-md-3">
+          <select class="form-select rounded-3" id="deptFilter">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select rounded-3" id="designFilter">
+            <option value="">All Designations</option>
+            <option value="Professor">Professor</option>
+            <option value="Associate Professor">Associate Professor</option>
+            <option value="Assistant Professor">Assistant Professor</option>
+            <option value="Lecturer">Lecturer</option>
+            <option value="Guest Faculty">Guest Faculty</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-outline-secondary w-100 rounded-3" id="resetBtn">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingSpinner" class="text-center py-5">
+    <div class="spinner-border" style="color:#c2185b" role="status"></div>
+    <p class="mt-2 text-muted">Loading faculty…</p>
+  </div>
+
+  <div class="row g-4" id="facultyGrid"></div>
+
+  <nav class="mt-4" id="paginationNav" style="display:none">
+    <ul class="pagination justify-content-center" id="pagination"></ul>
+  </nav>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const DESIGNATION_COLORS = {
+  'Professor': '#1a237e',
+  'Associate Professor': '#283593',
+  'Assistant Professor': '#1565c0',
+  'Lecturer': '#0277bd',
+  'Guest Faculty': '#558b2f',
+};
+let currentSearch='', currentDept='', currentDesig='';
+
+async function loadDepartments() {
+  const res = await fetch('/api/departments/?page_size=50');
+  const data = await res.json();
+  const sel = document.getElementById('deptFilter');
+  (data.results||data).forEach(d => {
+    const o = document.createElement('option'); o.value=d.id; o.textContent=d.name; sel.appendChild(o);
+  });
+}
+
+async function loadFaculty(page=1) {
+  document.getElementById('loadingSpinner').style.display='block';
+  document.getElementById('facultyGrid').innerHTML='';
+  const params = new URLSearchParams({page, page_size:12});
+  if (currentSearch) params.set('search', currentSearch);
+  if (currentDept)   params.set('department', currentDept);
+  if (currentDesig)  params.set('designation', currentDesig);
+
+  try {
+    const res  = await fetch(`/api/faculty/?${params}`);
+    const data = await res.json();
+    document.getElementById('loadingSpinner').style.display='none';
+    const list = data.results||[];
+    if (!list.length) {
+      document.getElementById('facultyGrid').innerHTML = '<div class="col-12 text-center py-5"><i class="bi bi-search fs-1 text-muted"></i><p class="mt-2 text-muted">No faculty found.</p></div>';
+      return;
+    }
+    document.getElementById('facultyGrid').innerHTML = list.map(f => {
+      const initials = f.faculty_name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+      const color = DESIGNATION_COLORS[f.designation] || '#546e7a';
+      return `
+      <div class="col-md-6 col-lg-4">
+        <div class="card card-cu h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                   style="width:56px;height:56px;background:${color};color:white;font-size:1.2rem;font-weight:700">
+                ${initials}
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0">${f.faculty_name}</h6>
+                <span class="badge rounded-pill small" style="background:${color}">${f.designation}</span>
+              </div>
+            </div>
+            <ul class="list-unstyled small text-muted mb-0">
+              <li class="mb-1"><i class="bi bi-building me-2" style="color:var(--cu-primary)"></i>${f.department_name}</li>
+              <li class="mb-1"><i class="bi bi-book me-2" style="color:var(--cu-primary)"></i>${f.course_name}</li>
+              <li class="mb-1"><i class="bi bi-envelope me-2" style="color:var(--cu-primary)"></i><a href="mailto:${f.email}">${f.email}</a></li>
+              <li><i class="bi bi-telephone me-2" style="color:var(--cu-primary)"></i>${f.phone}</li>
+            </ul>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    renderPagination(data, page);
+  } catch(e) {
+    document.getElementById('loadingSpinner').style.display='none';
+    document.getElementById('facultyGrid').innerHTML = '<div class="col-12 text-center text-danger">Error loading faculty.</div>';
+  }
+}
+
+function renderPagination(data, page) {
+  const nav = document.getElementById('paginationNav');
+  const ul  = document.getElementById('pagination');
+  const pages = Math.ceil((data.count||0)/12);
+  if (pages<=1) { nav.style.display='none'; return; }
+  nav.style.display='block';
+  ul.innerHTML='';
+  for (let i=1;i<=pages;i++) {
+    ul.innerHTML+=`<li class="page-item ${i===page?'active':''}"><button class="page-link" onclick="loadFaculty(${i})">${i}</button></li>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if pre-filtered by course from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const courseId  = urlParams.get('course');
+
+  loadDepartments();
+
+  if (courseId) {
+    fetch(`/api/faculty/course/${courseId}/`)
+      .then(r=>r.json())
+      .then(data => {
+        document.getElementById('loadingSpinner').style.display='none';
+        const list = data.results||[];
+        if (!list.length) {
+          document.getElementById('facultyGrid').innerHTML='<div class="col-12 text-center py-5 text-muted">No faculty for this course.</div>';
+          return;
+        }
+        document.getElementById('facultyGrid').innerHTML = list.map(f => {
+          const initials = f.faculty_name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+          const color = DESIGNATION_COLORS[f.designation]||'#546e7a';
+          return `<div class="col-md-6 col-lg-4">
+            <div class="card card-cu h-100">
+              <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                  <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                       style="width:56px;height:56px;background:${color};color:white;font-size:1.2rem;font-weight:700">${initials}</div>
+                  <div>
+                    <h6 class="fw-bold mb-0">${f.faculty_name}</h6>
+                    <span class="badge rounded-pill small" style="background:${color}">${f.designation}</span>
+                  </div>
+                </div>
+                <ul class="list-unstyled small text-muted">
+                  <li class="mb-1"><i class="bi bi-building me-2" style="color:var(--cu-primary)"></i>${f.department_name}</li>
+                  <li class="mb-1"><i class="bi bi-book me-2" style="color:var(--cu-primary)"></i>${f.course_name}</li>
+                  <li class="mb-1"><i class="bi bi-envelope me-2" style="color:var(--cu-primary)"></i>${f.email}</li>
+                  <li><i class="bi bi-telephone me-2" style="color:var(--cu-primary)"></i>${f.phone}</li>
+                </ul>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      });
+  } else {
+    loadFaculty(1);
+  }
+
+  let debounceTimer;
+  document.getElementById('searchInput').addEventListener('input', e => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => { currentSearch=e.target.value; loadFaculty(1); }, 400);
+  });
+  document.getElementById('deptFilter').addEventListener('change', e => { currentDept=e.target.value; loadFaculty(1); });
+  document.getElementById('designFilter').addEventListener('change', e => { currentDesig=e.target.value; loadFaculty(1); });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    document.getElementById('searchInput').value='';
+    document.getElementById('deptFilter').value='';
+    document.getElementById('designFilter').value='';
+    currentSearch=''; currentDept=''; currentDesig='';
+    loadFaculty(1);
+  });
+});
+</script>
+{% endblock %}

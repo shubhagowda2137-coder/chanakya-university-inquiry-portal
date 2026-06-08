@@ -1,0 +1,117 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>{% block title %}Chanakya University{% endblock %}</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+  background:#f5f5f5;
+}
+
+.navbar-cu{
+  background:#000;
+}
+
+.navbar-brand{
+  font-size:40px;
+  font-weight:bold;
+  color:white !important;
+}
+
+.navbar-brand span{
+  color:#d4af37;
+}
+
+.nav-link{
+  color:white !important;
+  font-size:28px;
+}
+
+.nav-link.active,
+.nav-link:hover{
+  color:#d4af37 !important;
+}
+
+.enquire-btn{
+  background:#d4af37;
+  border:none;
+  border-radius:50px;
+  padding:12px 30px;
+  font-weight:600;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-cu py-3">
+
+<div class="container-fluid px-5">
+
+<a class="navbar-brand" href="/">
+🎓 Chanakya <span>University</span>
+</a>
+
+<div class="collapse navbar-collapse show">
+
+<ul class="navbar-nav ms-auto align-items-center gap-3">
+
+<li class="nav-item">
+<a class="nav-link {% block nav_home %}{% endblock %}" href="/">
+🏠 Home
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link {% block nav_courses %}{% endblock %}" href="/courses/">
+📖 Courses
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link {% block nav_faculty %}{% endblock %}" href="/faculty/">
+👨‍🏫 Faculty
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link {% block nav_hostel %}{% endblock %}" href="/hostel/">
+🏨 Hostel
+</a>
+</li>
+
+<li class="nav-item">
+<a class="nav-link {% block nav_transport %}{% endblock %}" href="/transport/">
+🚌 Transport
+</a>
+</li>
+
+<li class="nav-item">
+<button class="enquire-btn"
+data-bs-toggle="modal"
+data-bs-target="#inquiryModal">
+✏ Enquire Now
+</button>
+</li>
+
+</ul>
+</div>
+</div>
+</nav>
+
+{% block content %}
+{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

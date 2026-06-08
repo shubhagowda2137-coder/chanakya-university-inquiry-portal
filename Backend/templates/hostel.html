@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Hostel – Chanakya University{% endblock %}
+{% block nav_hostel %}active{% endblock %}
+
+{% block content %}
+<div class="py-4" style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white">
+  <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><a href="/" class="text-white-50">Home</a></li>
+        <li class="breadcrumb-item active text-white">Hostel</li>
+      </ol>
+    </nav>
+    <h1 class="brand-font"><i class="bi bi-building me-2" style="color:#ffd600"></i>Hostel Facilities</h1>
+    <p class="opacity-75 mb-0">Safe, comfortable, and fully-equipped accommodation for students</p>
+  </div>
+</div>
+
+<div class="container py-5">
+  <!-- Stats -->
+  <div class="row g-3 mb-5" id="hostelStats">
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#2e7d32">
+        <div class="stat-number text-success" id="totalHostels">–</div>
+        <div class="stat-label">Total Hostels</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#1565c0">
+        <div class="stat-number" style="color:#1565c0" id="boysHostels">–</div>
+        <div class="stat-label">Boys Hostels</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#c2185b">
+        <div class="stat-number" style="color:#c2185b" id="girlsHostels">–</div>
+        <div class="stat-label">Girls Hostels</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-box" style="border-top-color:#e65100">
+        <div class="stat-number" style="color:#e65100" id="availRooms">–</div>
+        <div class="stat-label">Available Rooms</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="d-flex gap-2 mb-4 flex-wrap">
+    <button class="btn btn-primary rounded-pill filter-btn active" data-type="">All Hostels</button>
+    <button class="btn btn-outline-primary rounded-pill filter-btn" data-type="Boys">
+      <i class="bi bi-gender-male me-1"></i>Boys Only
+    </button>
+    <button class="btn btn-outline-danger rounded-pill filter-btn" data-type="Girls">
+      <i class="bi bi-gender-female me-1"></i>Girls Only
+    </button>
+  </div>
+
+  <div id="loadingSpinner" class="text-center py-5">
+    <div class="spinner-border text-success" role="status"></div>
+    <p class="mt-2 text-muted">Loading hostel information…</p>
+  </div>
+
+  <div class="row g-4" id="hostelGrid"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allHostels = [];
+
+async function loadHostels(typeFilter='') {
+  document.getElementById('loadingSpinner').style.display = 'block';
+  document.getElementById('hostelGrid').innerHTML = '';
+  try {
+    const params = new URLSearchParams({ page_size: 50 });
+    if (typeFilter) params.set('hostel_type', typeFilter);
+    const res  = await fetch(`/api/hostels/?${params}`);
+    const data = await res.json();
+    allHostels = data.results || data;
+    document.getElementById('loadingSpinner').style.display = 'none';
+
+    const boys   = allHostels.filter(h => h.hostel_type === 'Boys').length;
+    const girls  = allHostels.filter(h => h.hostel_type === 'Girls').length;
+    const avail  = allHostels.reduce((sum, h) => sum + (h.total_available_rooms || 0), 0);
+    document.getElementById('totalHostels').textContent = allHostels.length;
+    document.getElementById('boysHostels').textContent  = boys;
+    document.getElementById('girlsHostels').textContent = girls;
+    document.getElementById('availRooms').textContent   = avail;
+
+    if (!allHostels.length) {
+      document.getElementById('hostelGrid').innerHTML = '<div class="col-12 text-center py-5 text-muted">No hostels found.</div>';
+      return;
+    }
+    document.getElementById('hostelGrid').innerHTML = allHostels.map(h => {
+      const typeColor = h.hostel_type === 'Boys' ? '#1565c0' : h.hostel_type === 'Girls' ? '#c2185b' : '#558b2f';
+      const typeIcon  = h.hostel_type === 'Boys' ? 'bi-gender-male' : h.hostel_type === 'Girls' ? 'bi-gender-female' : 'bi-people';
+      const availPct  = h.total_rooms ? Math.round((h.total_available_rooms / h.total_rooms) * 100) : 0;
+      return `
+      <div class="col-md-6 col-lg-6">
+        <div class="card card-cu h-100">
+          <div class="card-header-cu d-flex justify-content-between align-items-center" style="background:linear-gradient(135deg,${typeColor},${typeColor}cc)">
+            <div>
+              <h5 class="mb-0 fw-bold">${h.hostel_name}</h5>
+              ${h.address ? `<small class="opacity-75"><i class="bi bi-geo-alt me-1"></i>${h.address}</small>` : ''}
+            </div>
+            <span class="badge rounded-pill bg-white" style="color:${typeColor}">
+              <i class="bi ${typeIcon} me-1"></i>${h.hostel_type}
+            </span>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3 mb-3">
+              <div class="col-4 text-center">
+                <div class="fw-bold fs-5" style="color:var(--cu-primary)">${h.total_rooms}</div>
+                <div class="small text-muted">Total Rooms</div>
+              </div>
+              <div class="col-4 text-center">
+                <div class="fw-bold fs-5 ${h.total_available_rooms > 10 ? 'avail-good' : h.total_available_rooms > 0 ? 'avail-low' : 'avail-none'}">${h.total_available_rooms}</div>
+                <div class="small text-muted">Available</div>
+              </div>
+              <div class="col-4 text-center">
+                <div class="fw-bold fs-5 text-muted">${h.room_count || 0}</div>
+                <div class="small text-muted">Room Types</div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1">
+                <span class="text-muted">Occupancy</span>
+                <span class="fw-semibold">${100 - availPct}% filled</span>
+              </div>
+              <div class="progress" style="height:8px">
+                <div class="progress-bar" role="progressbar" style="width:${100-availPct}%;background:${typeColor}" aria-valuenow="${100-availPct}" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            </div>
+            ${h.contact_number ? `<p class="small text-muted mb-0"><i class="bi bi-telephone me-2" style="color:${typeColor}"></i>${h.contact_number}</p>` : ''}
+          </div>
+          <div class="card-footer bg-transparent border-0 p-3">
+            <button class="btn btn-sm btn-outline-success rounded-pill w-100" onclick="loadRooms(${h.id}, '${h.hostel_name}')">
+              <i class="bi bi-door-open me-1"></i>View Room Details
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('loadingSpinner').style.display='none';
+    document.getElementById('hostelGrid').innerHTML='<div class="col-12 text-danger text-center">Error loading hostel data.</div>';
+  }
+}
+
+async function loadRooms(hostelId, hostelName) {
+  const res  = await fetch(`/api/hostels/${hostelId}/`);
+  const data = await res.json();
+  const rooms = data.rooms || [];
+  const html = rooms.map(r => `
+    <tr>
+      <td class="fw-semibold">${r.room_type_display || r.room_type}</td>
+      <td>${r.course_name || '<span class="text-muted">All Courses</span>'}</td>
+      <td class="${r.available_rooms > 5 ? 'avail-good' : r.available_rooms > 0 ? 'avail-low' : 'avail-none'}">${r.available_rooms}</td>
+      <td>₹${parseFloat(r.monthly_fee).toLocaleString('en-IN')}/month</td>
+    </tr>`).join('');
+
+  const modal = new bootstrap.Modal(document.createElement('div'));
+  document.getElementById('roomModalTitle').textContent = hostelName;
+  document.getElementById('roomTableBody').innerHTML = html || '<tr><td colspan="4" class="text-muted text-center">No room data available.</td></tr>';
+  const roomModal = new bootstrap.Modal(document.getElementById('roomDetailModal'));
+  roomModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadHostels();
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active','btn-primary','btn-danger'));
+      btn.classList.add('active');
+      loadHostels(btn.dataset.type);
+    });
+  });
+});
+</script>
+
+<!-- Room Detail Modal -->
+<div class="modal fade" id="roomDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white">
+        <h5 class="modal-title brand-font" id="roomModalTitle">Room Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-cu">
+              <tr>
+                <th>Room Type</th>
+                <th>For Course</th>
+                <th>Available Rooms</th>
+                <th>Monthly Fee</th>
+              </tr>
+            </thead>
+            <tbody id="roomTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <small class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Availability is subject to change.</small>
+        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Close</button>
+        <button class="btn rounded-pill px-4" style="background:var(--cu-primary);color:white"
+                data-bs-toggle="modal" data-bs-target="#inquiryModal">
+          <i class="bi bi-pencil-square me-1"></i>Enquire Now
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
